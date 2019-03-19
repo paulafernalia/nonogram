@@ -10,7 +10,10 @@ game = GridMap(col_rules, row_rules)
 game, empty_cells = rule_based_simplify(game)
 
 # Create optimisation model
-# model = opt_model(game, empty_cells)
+model = opt_model(game, empty_cells)
+
+# Plot solution
+fig, ax = game.plot_grid()
 
 # # Solve problem
 # model, results, optimality = solve_model(model, tee=True)

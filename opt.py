@@ -2,6 +2,7 @@
 import pyomo.environ as pyo
 import numpy as np
 import itertools
+from utils import initialise_dict_ranges
 
 def opt_model(GridMap, empty_cells):
 	''' 
@@ -237,17 +238,13 @@ def rule_based_simplify(GridMap):
 	- Hard rules for optimizer
 	'''
 	empty_cells = np.zeros_like(GridMap._grid)
+	range_dict = initialise_dict_ranges(GridMap)
 
 	# Generate overlaps in rows
-	GridMap._grid, empty_cells = overlap(GridMap._grid, GridMap._row_rules, 
-		GridMap._w, empty_cells)
+	range_dict = initial_ext_ind(GridMap, range_dict, "R")
+	range_dict = initial_ext_ind(GridMap, range_dict, "C")
 
-	# Generate overlaps in columns
-	GridMap._grid, empty_cells = overlap(GridMap._grid.T, GridMap._col_rules, 
-		GridMap._h, empty_cells.T)
-
-	GridMap._grid = GridMap._grid.T
-	empty_cells = empty_cells.T
+	GridMap.grid = overlap(GridMap, range_dict)
 
 	# Find empty cells around finished groups (rows)
 	empty_cells = blanks_around_finished_groups(GridMap._grid, 
@@ -258,12 +255,32 @@ def rule_based_simplify(GridMap):
 	empty_cells = empty_cells.T
 
 	# print("partial_sol", GridMap._grid)
-	print("empty cells\n", empty_cells)
+	# print("empty cells\n", empty_cells)
+
 
 	return GridMap, empty_cells
 
 
-def overlap(grid, rules, dim, empty_cells):
+
+def overlap(GridMap, range_dict):
+	for r in range(GridMap._h):
+		for i, g in enumerate(GridMap._row_rules[r]):
+			start = range_dict['R'][r]['S'][i]
+			end = range_dict['R'][r]['E'][i]
+
+			GridMap.grid[r, end - g + 1 : start + g] = 1
+
+	for c in range(GridMap._w):
+		for i, g in enumerate(GridMap._col_rules[c]):
+			start = range_dict['C'][c]['S'][i]
+			end = range_dict['C'][c]['E'][i]
+
+			GridMap.grid[end - g + 1 : start + g, c] = 1
+
+	return GridMap.grid
+
+
+def initial_ext_ind(grid, range_dict, rc):
 	''' Generate overlaps between placing a group all the way to the left
 	and all the way to the right
 
@@ -276,58 +293,65 @@ def overlap(grid, rules, dim, empty_cells):
 	- gridmap with hard rules
 	'''
 
-	for r, rule in enumerate(rules):
+	if rc == "R":
+		rules = grid._row_rules
+		dim = grid._w
+	elif rc == "C":
+		rules = grid._col_rules
+		dim = grid._h
+
+	for i, rule in enumerate(rules):
 
 		for l_i in range(len(rule)):
 			
 			r_i = len(rule) - l_i - 1
 
-			left = generate_extreme_pos(l_i, rule, dim)
-			right = generate_extreme_pos(r_i, rule[::-1], dim)[::-1]
-			overlap = left + right
+			range_dict[rc][i]['S'][l_i] = generate_extreme_pos(l_i, rule, dim)
+			range_dict[rc][i]['E'][l_i] = dim - 1 - generate_extreme_pos(r_i, rule[::-1], dim)
 
-			# Write cells with overlap to solution (black cells)
-			grid[r,:] = np.where(overlap == 2, 1, grid[r,:])
+			# # When the overlap has the same length as the group, write
+			# # white cells around the group to solution
+			# if len(overlap[overlap == 2]) == len(left[left == 1]):
+			# 	last_idx = np.max(np.where(left == 1)[0])
+			# 	first_idx = np.min(np.where(left == 1)[0])
 
-			# When the overlap has the same length as the group, write
-			# white cells around the group to solution
-			if len(overlap[overlap == 2]) == len(left[left == 1]):
-				last_idx = np.max(np.where(left == 1)[0])
-				first_idx = np.min(np.where(left == 1)[0])
+			# 	if last_idx < dim -1:
+			# 		empty_cells[r,last_idx + 1] = 1
+			# 	if first_idx > 0:
+			# 		empty_cells[r,first_idx - 1] = 1
 
-				if last_idx < dim -1:
-					empty_cells[r,last_idx + 1] = 1
-				if first_idx > 0:
-					empty_cells[r,first_idx - 1] = 1
+	# print(range_dict)
 
-	return grid, empty_cells
+	return range_dict
 
 
 
 def blanks_around_finished_groups(grid, rules, dim, empty_cells):
 
-	for r, rule in enumerate(rules):
+	# for r, rule in enumerate(rules):
 
-		bin_groups = []
-		for k, g in itertools.groupby(np.array(grid[r,:]), lambda x: x > 0):
-			bin_groups.append(np.array(list(g)))
+	# 	bin_groups = []
+	# 	for k, g in itertools.groupby(np.array(grid[r,:]), lambda x: x > 0):
+	# 		bin_groups.append(np.array(list(g)))
 
-		one_groups = [len(b) for b in bin_groups if len(b) == np.sum(b)]
+	# 	one_groups = [len(b) for b in bin_groups if len(b) == np.sum(b)]
 
-		for g in one_groups:
-			if np.all(g >= np.array(rule)):
-				print("rule", rule)
-				print("one_group", one_groups)
-				print("happened. row:", r, "length:",g)
-				idx_list = find_group_by_length(grid[r,:], g)
+	# 	for g in one_groups:
+	# 		if np.all(g >= np.array(rule)):
+	# 			print("rule", rule)
+	# 			print("one_group", one_groups)
+	# 			print("happened. row:", r, "length:",g)
+	# 			idx_list = find_group_by_length(grid[r,:], g)
 
-				for idx in idx_list:
-					if idx > 0:
-						empty_cells[r,idx - 1] = 1
+	# 			for idx in idx_list:
+	# 				if idx > 0:
+	# 					empty_cells[r,idx - 1] = 1
 
-					if idx + g < dim:
-						empty_cells[r,idx + g] = 1
-						
+	# 				if idx + g < dim:
+	# 					empty_cells[r,idx + g] = 1
+
+	None
+
 	return empty_cells
 
 
@@ -344,12 +368,9 @@ def generate_extreme_pos(i, rule, dim):
 	- ext: array with ones where this group would be in this extreme
 	'''
 
-	ext_zeros = np.repeat(0, sum([rule[j] for j in range(i)]) + i)
-	ext_ones = np.repeat(1, rule[i])
-	ext_fill = np.repeat(0, dim - len(ext_ones) - len(ext_zeros))
-	ext = np.concatenate((ext_zeros, ext_ones, ext_fill), axis=None)
+	ext_idx = sum([rule[j] for j in range(i)]) + i
 
-	return ext
+	return ext_idx
 
 
 def find_group_by_length(y, target_len):

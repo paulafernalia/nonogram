@@ -35,7 +35,7 @@ class GridMap:
     def plot_grid(self, figsize=(8,4)):
         ''' Plot empty grid map '''
 
-        cmap   = colors.ListedColormap(['white', 'black'])
+        cmap   = colors.ListedColormap(['white', 'grey', 'black'])
         norm   = colors.BoundaryNorm([2,1,-1], cmap.N)
 
         fig, ax = plt.subplots(figsize=figsize)
@@ -71,4 +71,30 @@ def islandinfo(y):
 
     # Using a stepsize of 2 would get us start and stop indices for each island
     return zip(idx[:-1:2], idx[1::2]-1), lens
+
+
+def initialise_dict_ranges(GridMap):
+    range_dict = {}
+
+    range_dict['R'] = {}
+    range_dict['C'] = {}
+
+    for r in range(GridMap._h):
+        range_dict['R'][r] = {}
+
+        range_dict['R'][r]['S'] = np.repeat(0, 
+                                            len(GridMap._row_rules[r]))
+        range_dict['R'][r]['E'] = np.repeat(GridMap._w, 
+                                            len(GridMap._row_rules[r]))
+
+    for c in range(GridMap._w):
+        range_dict['C'][c] = {}
+
+        range_dict['C'][c]['S'] = np.repeat(0, 
+                                            len(GridMap._col_rules[c]))
+        range_dict['C'][c]['E'] = np.repeat(GridMap._w, 
+                                            len(GridMap._col_rules[c]))
+
+    return range_dict
+
 
