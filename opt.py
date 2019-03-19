@@ -171,7 +171,7 @@ def opt_model(GridMap, empty_cells):
 		for c in m.C:
 			if GridMap._grid[r,c] == 1:
 				m.partial_sol.add(m.x[r,c] == 1)
-			if empty_cells[r,c] == 1:
+			if GridMap._grid[r,c] == -1:
 				m.partial_sol.add(m.x[r,c] == 0)
 
 
@@ -247,16 +247,9 @@ def rule_based_simplify(GridMap):
 	GridMap.grid = overlap(GridMap, range_dict)
 
 	# Find empty cells around finished groups (rows)
-	empty_cells = blanks_around_finished_groups(GridMap._grid, 
-		GridMap._row_rules, GridMap._w, empty_cells)
 
-	empty_cells = blanks_around_finished_groups(GridMap._grid.T, 
-		GridMap._col_rules, GridMap._h, empty_cells.T)
-	empty_cells = empty_cells.T
-
-	# print("partial_sol", GridMap._grid)
-	# print("empty cells\n", empty_cells)
-
+	GridMap.grid = blanks_around_finished(GridMap, range_dict, "R")
+	GridMap.grid = blanks_around_finished(GridMap, range_dict, "C")
 
 	return GridMap, empty_cells
 
@@ -280,12 +273,12 @@ def overlap(GridMap, range_dict):
 	return GridMap.grid
 
 
-def initial_ext_ind(grid, range_dict, rc):
+def initial_ext_ind(GridMap, range_dict, rc):
 	''' Generate overlaps between placing a group all the way to the left
 	and all the way to the right
 
 	Args:
-	- grid: array where solution is being stored
+	- GridMap: object of class gridmap
 	- rules: list of all rules (rows or cols)
 	- dim: if row number of cols and viceversa
 
@@ -294,11 +287,11 @@ def initial_ext_ind(grid, range_dict, rc):
 	'''
 
 	if rc == "R":
-		rules = grid._row_rules
-		dim = grid._w
+		rules = GridMap._row_rules
+		dim = GridMap._w
 	elif rc == "C":
-		rules = grid._col_rules
-		dim = grid._h
+		rules = GridMap._col_rules
+		dim = GridMap._h
 
 	for i, rule in enumerate(rules):
 
@@ -309,50 +302,42 @@ def initial_ext_ind(grid, range_dict, rc):
 			range_dict[rc][i]['S'][l_i] = generate_extreme_pos(l_i, rule, dim)
 			range_dict[rc][i]['E'][l_i] = dim - 1 - generate_extreme_pos(r_i, rule[::-1], dim)
 
-			# # When the overlap has the same length as the group, write
-			# # white cells around the group to solution
-			# if len(overlap[overlap == 2]) == len(left[left == 1]):
-			# 	last_idx = np.max(np.where(left == 1)[0])
-			# 	first_idx = np.min(np.where(left == 1)[0])
-
-			# 	if last_idx < dim -1:
-			# 		empty_cells[r,last_idx + 1] = 1
-			# 	if first_idx > 0:
-			# 		empty_cells[r,first_idx - 1] = 1
-
-	# print(range_dict)
-
 	return range_dict
 
 
 
-def blanks_around_finished_groups(grid, rules, dim, empty_cells):
+def blanks_around_finished(GridMap, range_dict, rc):
+	''' Function to find finished groups and placing empty 
+	cells around them
 
-	# for r, rule in enumerate(rules):
+	Args:
+	- grid: array where solution is being stored
 
-	# 	bin_groups = []
-	# 	for k, g in itertools.groupby(np.array(grid[r,:]), lambda x: x > 0):
-	# 		bin_groups.append(np.array(list(g)))
+	'''
 
-	# 	one_groups = [len(b) for b in bin_groups if len(b) == np.sum(b)]
+	if rc == "R":
+		rules = GridMap._row_rules
+		dim = GridMap._w
+	elif rc == "C":
+		rules = GridMap._col_rules
+		dim = GridMap._h
 
-	# 	for g in one_groups:
-	# 		if np.all(g >= np.array(rule)):
-	# 			print("rule", rule)
-	# 			print("one_group", one_groups)
-	# 			print("happened. row:", r, "length:",g)
-	# 			idx_list = find_group_by_length(grid[r,:], g)
+	for r_i, rule in enumerate(rules):
+		print(r_i, rule)
+		for g_i, g in enumerate(rule):
 
-	# 			for idx in idx_list:
-	# 				if idx > 0:
-	# 					empty_cells[r,idx - 1] = 1
+			left = range_dict[rc][r_i]['S'][g_i] 
+			right = range_dict[rc][r_i]['E'][g_i] 
 
-	# 				if idx + g < dim:
-	# 					empty_cells[r,idx + g] = 1
+			if (right - left + 1 == g):
+				if left > 0: 
+					if rc == "R": GridMap.grid[r_i, left - 1] = -1
+					elif rc == "C": GridMap.grid[left - 1, r_i] = -1
+				if right < dim - 1: 
+					if rc == "R": GridMap.grid[r_i, right + 1] = -1
+					elif rc == "C": GridMap.grid[right + 1, r_i] = -1
 
-	None
-
-	return empty_cells
+	return GridMap.grid
 
 
 
