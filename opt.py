@@ -2,7 +2,8 @@
 import pyomo.environ as pyo
 import numpy as np
 import itertools
-from utils import initialise_dict_ranges
+from utils import initialise_dict_ranges, islandinfo
+
 
 def opt_model(GridMap, empty_cells):
 	''' 
@@ -212,7 +213,7 @@ def solve_model(
 	-	results: info on the status of the solver, e.g. termination status
 	-	optimality: boolean, true if solution is optimal
 	'''
-
+	print("*  Solving model")
 	solver = pyo.SolverFactory('cbc')
 
 	if gap is not None:
@@ -244,12 +245,24 @@ def rule_based_simplify(GridMap):
 	range_dict = initial_ext_ind(GridMap, range_dict, "R")
 	range_dict = initial_ext_ind(GridMap, range_dict, "C")
 
-	GridMap.grid = overlap(GridMap, range_dict)
+	for i in range(3):
 
-	# Find empty cells around finished groups (rows)
+		# Find empty cells around finished groups (rows)
 
-	GridMap.grid = blanks_around_finished(GridMap, range_dict, "R")
-	GridMap.grid = blanks_around_finished(GridMap, range_dict, "C")
+		GridMap._grid = blanks_around_finished(GridMap, range_dict, "R")
+		GridMap._grid = blanks_around_finished(GridMap, range_dict, "C")
+
+		GridMap._grid = blanks_around_longest_possible(GridMap, range_dict, "R")
+		GridMap._grid = blanks_around_longest_possible(GridMap, range_dict, "C")
+
+		GridMap._grid  = update_range(GridMap, range_dict, "R")
+
+		GridMap._grid = overlap(GridMap, range_dict)
+
+		GridMap._grid = blanks_after_before_extreme_groups(GridMap, range_dict, "R")
+		GridMap._grid = blanks_after_before_extreme_groups(GridMap, range_dict, "C")
+
+
 
 	return GridMap, empty_cells
 
@@ -261,16 +274,16 @@ def overlap(GridMap, range_dict):
 			start = range_dict['R'][r]['S'][i]
 			end = range_dict['R'][r]['E'][i]
 
-			GridMap.grid[r, end - g + 1 : start + g] = 1
+			GridMap._grid[r, end - g + 1 : start + g] = 1
 
 	for c in range(GridMap._w):
 		for i, g in enumerate(GridMap._col_rules[c]):
 			start = range_dict['C'][c]['S'][i]
 			end = range_dict['C'][c]['E'][i]
 
-			GridMap.grid[end - g + 1 : start + g, c] = 1
+			GridMap._grid[end - g + 1 : start + g, c] = 1
 
-	return GridMap.grid
+	return GridMap._grid
 
 
 def initial_ext_ind(GridMap, range_dict, rc):
@@ -294,7 +307,6 @@ def initial_ext_ind(GridMap, range_dict, rc):
 		dim = GridMap._h
 
 	for i, rule in enumerate(rules):
-
 		for l_i in range(len(rule)):
 			
 			r_i = len(rule) - l_i - 1
@@ -303,6 +315,108 @@ def initial_ext_ind(GridMap, range_dict, rc):
 			range_dict[rc][i]['E'][l_i] = dim - 1 - generate_extreme_pos(r_i, rule[::-1], dim)
 
 	return range_dict
+
+
+def blanks_after_before_extreme_groups(GridMap, range_dict, rc):
+	if rc == "R":
+		rules = GridMap._row_rules
+		dim = GridMap._w
+		grid = GridMap._grid
+
+	elif rc == "C":
+		rules = GridMap._col_rules
+		dim = GridMap._h
+		grid = GridMap._grid.T
+
+	for r_i, rule in enumerate(rules):
+
+		if rc == "C" and r_i == 6:
+			print(r_i, rule)
+			for g_i, g in enumerate(rule):
+
+				left = range_dict[rc][r_i]['S'][g_i] 
+				right = range_dict[rc][r_i]['E'][g_i] 
+
+				if g_i == 1:				
+					print(" *  ",g, g_i, "left", left, "right", right)
+					print("       ", "len", len(rule))
+
+
+					if (right - left + 1 == g) and (g_i == 0) and left > 1:
+						print("CASE 1")
+						grid[r_i, 0 : left - 1] = -1
+
+					if (right - left + 1 == g) and (g_i == len(rule) - 1) and right < dim - 2:
+						print("CASE 2")
+						grid[r_i, right + 2 : -1] = -1
+
+	if rc == "C":
+		grid = grid.T
+
+	return grid
+
+
+def update_range(GridMap, range_dict, rc):
+	'''TODO: COLUMNS'''
+	# print(GridMap._grid)
+	if rc == "R":
+		rules = GridMap._row_rules
+		dim = GridMap._w
+		grid = GridMap._grid
+	elif rc == "C":
+		rules = GridMap._col_rules
+		dim = GridMap._h 
+		grid = GridMap._grid.T
+
+	for r_i, rule in enumerate(rules):
+		# print()
+		# print("ROW:  ", r_i, rule)
+		for g_i, g in enumerate(rule):
+			start = range_dict[rc][r_i]['S'][g_i]
+			end = range_dict[rc][r_i]['E'][g_i]
+			empty_idx = np.where(grid[r_i,:] == -1)[0]
+
+
+			empty_idx = empty_idx[(empty_idx >= start) & (empty_idx <= start + g - 1)]
+			# print(empty_idx)
+			if len(empty_idx) > 0:
+				last_possible = np.max(empty_idx)
+				# print("    * OLD: ", range_dict["R"][r_i]["S"][g_i], range_dict["R"][r_i]["E"][g_i])				
+				range_dict["R"][r_i]["S"][g_i] = max(last_possible + 1, range_dict["R"][r_i]["S"][g_i])
+				# print("    * NEW: ", range_dict["R"][r_i]["S"][g_i] + 1, range_dict["R"][r_i]["E"][g_i])		
+			
+
+	return grid
+
+
+def blanks_around_longest_possible(GridMap, range_dict, rc):
+	''' TBC
+	'''
+	if rc == "R":
+		rules = GridMap._row_rules
+		dim = GridMap._w
+	elif rc == "C":
+		rules = GridMap._col_rules
+		dim = GridMap._h
+
+	for r_i, rule in enumerate(rules):
+
+		if rc == "R":
+			rc_sol = GridMap._grid[r_i,:]
+		else:
+			rc_sol = GridMap._grid[:,r_i]
+		
+		ones_ranges, ones_lens = islandinfo(rc_sol)
+		for p_i, p in enumerate(ones_ranges):
+			if np.all(ones_lens[p_i] >= np.array(rule)):
+				if p[0] > 0:
+					if rc == "R": GridMap._grid[r_i, p[0] - 1] = -1
+					elif rc == "C": GridMap._grid[p[0] - 1, r_i] = -1
+				if p[1] < dim - 1: 
+					if rc == "R": GridMap._grid[r_i, p[1] + 1] = -1
+					elif rc == "C": GridMap._grid[p[1] + 1, r_i] = -1
+
+	return GridMap._grid
 
 
 
@@ -323,7 +437,6 @@ def blanks_around_finished(GridMap, range_dict, rc):
 		dim = GridMap._h
 
 	for r_i, rule in enumerate(rules):
-		print(r_i, rule)
 		for g_i, g in enumerate(rule):
 
 			left = range_dict[rc][r_i]['S'][g_i] 
@@ -331,13 +444,13 @@ def blanks_around_finished(GridMap, range_dict, rc):
 
 			if (right - left + 1 == g):
 				if left > 0: 
-					if rc == "R": GridMap.grid[r_i, left - 1] = -1
-					elif rc == "C": GridMap.grid[left - 1, r_i] = -1
+					if rc == "R": GridMap._grid[r_i, left - 1] = -1
+					elif rc == "C": GridMap._grid[left - 1, r_i] = -1
 				if right < dim - 1: 
-					if rc == "R": GridMap.grid[r_i, right + 1] = -1
-					elif rc == "C": GridMap.grid[right + 1, r_i] = -1
+					if rc == "R": GridMap._grid[r_i, right + 1] = -1
+					elif rc == "C": GridMap._grid[right + 1, r_i] = -1
 
-	return GridMap.grid
+	return GridMap._grid
 
 
 

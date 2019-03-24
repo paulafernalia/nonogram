@@ -15,23 +15,23 @@ model = opt_model(game, empty_cells)
 # Plot solution
 fig, ax = game.plot_grid()
 
-# # Solve problem
-# model, results, optimality = solve_model(model, tee=True)
+# Solve problem
+model, results, optimality = solve_model(model, tee=True)
 
-# if optimality:
-# 	print('Termination condition: optimal')
+if optimality:
+	print('Termination condition: optimal')
 
-# # Create array with solution
-# game.grid = np.zeros((game._h,game._w))
-# for c in model.C:
-#     for r in model.R:
-#         game.grid[r,c] = model.x[r,c].value    
+# Create array with solution
+game.grid = np.zeros((game._h,game._w))
+for c in model.C:
+    for r in model.R:
+        game.grid[r,c] = model.x[r,c].value    
 
-# for i in range(0,3):
-# 	lambda_sol = np.zeros((game._h,game._w))
-# 	for c in model.C:
-# 	    for r in model.R:
-# 	        lambda_sol[r,c] = round(model.lr[r,c,i].value,2)   
+for i in range(0,3):
+	lambda_sol = np.zeros((game._h,game._w))
+	for c in model.C:
+	    for r in model.R:
+	        lambda_sol[r,c] = round(model.lr[r,c,i].value,2)   
 
 # Plot solution
 fig, ax = game.plot_grid()

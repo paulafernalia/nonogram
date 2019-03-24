@@ -70,7 +70,7 @@ def islandinfo(y):
     lens = idx[1::2] - idx[:-1:2]
 
     # Using a stepsize of 2 would get us start and stop indices for each island
-    return zip(idx[:-1:2], idx[1::2]-1), lens
+    return list(zip(idx[:-1:2], idx[1::2]-1)), lens
 
 
 def initialise_dict_ranges(GridMap):
