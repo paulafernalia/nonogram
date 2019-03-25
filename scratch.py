@@ -1,12 +1,26 @@
+    
+import dash
+import dash_html_components as html
+import dash_core_components as dcc
 
-range_dict = {}
+app = dash.Dash()
+app.layout = html.Div([
+    html.Div([
+        html.Div([
+            html.H3('Column 1'),
+            dcc.Graph(id='g1', figure={'data': [{'y': [1, 2, 3]}]})
+        ], className="six columns"),
 
-range_dict['R'] = {}
-range_dict['C'] = {}
-for r in range(2):
-	range_dict['R'][r] = {}
+        html.Div([
+            html.H3('Column 2'),
+            dcc.Graph(id='g2', figure={'data': [{'y': [1, 2, 3]}]})
+        ], className="six columns"),
+    ], className="row")
+])
 
-	range_dict['R'][r]['start'] = [1,2,3]
-	range_dict['R'][r]['end'] = [2,3,5]
+app.css.append_css({
+    'external_url': 'https://codepen.io/chriddyp/pen/bWLwgP.css'
+})
 
-print(range_dict)
+if __name__ == '__main__':
+    app.run_server(debug=True)

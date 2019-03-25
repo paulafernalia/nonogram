@@ -1,7 +1,7 @@
 import numpy as np
 
 from utils import GridMap
-from sample_puzzle import col_rules, row_rules
+import sample_puzzle
 from opt import opt_model, solve_model, rule_based_simplify
 
 # Create game instance

@@ -23,7 +23,7 @@ class GridMap:
         self._row_rules = row_rules
         
         self._num_rules = sum([len(r) for r in row_rules]) + sum([len(c) for c in col_rules])
-        self._grid = np.ones([self._h, self._w]) * 0.5
+        self._grid = np.zeros([self._h, self._w])
 
         self._row_labels = [" ".join([str(r)+" " for r in rule]) for rule in row_rules]
         self._col_labels = ["\n".join([str(r) for r in rule]) for rule in col_rules]
@@ -83,25 +83,27 @@ def plotly_heatmap(grid, w, h, row_labels, col_labels):
                 # y=list(range(0,-h)),
                 z=grid,
                 colorscale=[
-                    [0, 'rgb(200, 200, 200)'], 
-                    [0.5, 'rgb(255, 255, 255)'], 
-                    [1, 'rgb(0, 0, 0)']
+                    [0, 'rgb(255, 255, 255)'], # white
+                    [0.5, 'rgb(179, 204, 255)'], # grey
+                    [1, 'rgb(0, 40, 77)'] # black
                 ],
                 showscale=False,
                 hoverinfo="none",
-                xgap=1,
-                ygap=1,
+                xgap=2,
+                ygap=2,
             )
     layout = go.Layout(
-                height=40 * h,
-                width=40 * w,
-                plot_bgcolor=('rgb(0,0,0)'),
+                height=30 * (h+4),
+                width=30 * (w+4),
+                plot_bgcolor=('#9cbff4'),
                 yaxis=go.layout.YAxis(
-                    ticktext=row_labels[::-1],
+                    ticktext=row_labels,
+                    color='rgb(0, 40, 77)',
+                    # family='sans-serif',
                     tickvals=np.arange(h+1),
                     ticks="",
                     zeroline=False,
-                    linecolor= 'black',
+                    linecolor= ('rgb(230, 238, 255)'),
                     mirror=True,
                     autorange="reversed"
                 ),
@@ -109,9 +111,11 @@ def plotly_heatmap(grid, w, h, row_labels, col_labels):
                     ticktext=col_labels,
                     tickvals=np.arange(w+1),
                     ticks="",
+                    color='rgb(0, 40, 77)',
+                    # family='sans-serif',
                     zeroline=False,
                     tickangle=-90,
-                    linecolor= 'black',
+                    linecolor= ('rgb(230, 238, 255)'),
                     mirror=True,
                 )
             )

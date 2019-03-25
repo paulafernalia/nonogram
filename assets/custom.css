@@ -1,3 +1,45 @@
 .modebar{
       display: none !important;
 }
+._dash-undo-redo {
+  display: none;
+}
+
+body {
+    font-family: sans-serif;
+}
+h1, h2, h3, h4, h5, h6 {
+    color: red
+}
+
+.app-title{
+    color:white;
+    padding-left: 5px;
+    /*font-size: 25px;    */
+    /*vertical-align: middle;*/
+    font-family: sans-serif;
+}
+
+
+.button {
+  background-color: #9cbff4; 
+  color: white; 
+  font-size: 15px; 
+  border: 2px solid white;
+  width: 300px;
+  border-radius: 4px;
+  margin-top: 15px;
+}
+
+.button:hover {
+  background-color: white;
+  color: #9cbff4;
+  border: 2px solid white;
+}
+
+
+.dropdown {
+  margin-top: 15px,
+  color: black, 
+  background: #9cbff4,
+}
