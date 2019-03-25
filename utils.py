@@ -4,6 +4,7 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from matplotlib import colors
+import plotly.graph_objs as go
 
 
 class GridMap:
@@ -15,14 +16,17 @@ class GridMap:
         self._w = len(col_rules)
         self._h = len(row_rules)
 
-        self._start = [0,   0]
+        self._start = [0, 0]
         self._end   = [self._w-1, 0]
         
         self._col_rules = col_rules
         self._row_rules = row_rules
         
         self._num_rules = sum([len(r) for r in row_rules]) + sum([len(c) for c in col_rules])
-        self._grid = np.zeros([self._h, self._w])
+        self._grid = np.ones([self._h, self._w]) * 0.5
+
+        self._row_labels = [" ".join([str(r)+" " for r in rule]) for rule in row_rules]
+        self._col_labels = ["\n".join([str(r) for r in rule]) for rule in col_rules]
         
     @property
     def grid(self):
@@ -56,7 +60,6 @@ class GridMap:
         return(fig, ax)
 
 
-
 def islandinfo(y):
     # Setup "sentients" on either sides to make sure we have setup
     # "ramps" to catch the start and stop for the edge islands
@@ -72,6 +75,49 @@ def islandinfo(y):
     # Using a stepsize of 2 would get us start and stop indices for each island
     return list(zip(idx[:-1:2], idx[1::2]-1)), lens
 
+
+
+def plotly_heatmap(grid, w, h, row_labels, col_labels):
+    data= go.Heatmap(
+                # x=list(range(w)),
+                # y=list(range(0,-h)),
+                z=grid,
+                colorscale=[
+                    [0, 'rgb(200, 200, 200)'], 
+                    [0.5, 'rgb(255, 255, 255)'], 
+                    [1, 'rgb(0, 0, 0)']
+                ],
+                showscale=False,
+                hoverinfo="none",
+                xgap=1,
+                ygap=1,
+            )
+    layout = go.Layout(
+                height=40 * h,
+                width=40 * w,
+                plot_bgcolor=('rgb(0,0,0)'),
+                yaxis=go.layout.YAxis(
+                    ticktext=row_labels[::-1],
+                    tickvals=np.arange(h+1),
+                    ticks="",
+                    zeroline=False,
+                    linecolor= 'black',
+                    mirror=True,
+                    autorange="reversed"
+                ),
+                xaxis=go.layout.XAxis(
+                    ticktext=col_labels,
+                    tickvals=np.arange(w+1),
+                    ticks="",
+                    zeroline=False,
+                    tickangle=-90,
+                    linecolor= 'black',
+                    mirror=True,
+                )
+            )
+
+    return {'data': [data],
+            'layout': layout}
 
 def initialise_dict_ranges(GridMap):
     range_dict = {}
@@ -96,5 +142,3 @@ def initialise_dict_ranges(GridMap):
                                             len(GridMap._col_rules[c]))
 
     return range_dict
-
-
