@@ -7,9 +7,13 @@ import dash_html_components as html
 import dash_core_components as dcc
 import plotly.graph_objs as go
 import json
+import pyomo.environ as pyo
 
+import opt
 import sample_puzzle as sp
 from utils import GridMap, plotly_heatmap
+import pyutilib.subprocess.GlobalData
+pyutilib.subprocess.GlobalData.DEFINE_SIGNAL_HANDLERS_DEFAULT = False
 
 # Main layout
 
@@ -32,6 +36,7 @@ def serve_layout():
     game_dict['grid'] = game._grid.tolist()
     game_dict['puzzle'] = 'Nonogram 1: 10x10'
     game_dict['n_clicks'] = 0
+    game_dict['n_clicks_clear'] = 0
 
     game_dict['changes'] = {
         "0.5": 0, # White to black
@@ -69,6 +74,10 @@ def serve_layout():
             html.Div([
                 html.Button('Solve', id='button', className='button')
             ], className="three columns"),
+
+            html.Div([
+                html.Button('Clear', id='button-clear', className='button')
+            ], className="three columns"),
         ], 
         className="row",
         style={"background-color": "#9cbff4", "height": "70px"}
@@ -91,7 +100,7 @@ def serve_layout():
         html.Div(
             id='hidden-data', 
             children = json.dumps(game_dict),
-            # style={'display': 'none'}
+            style={'display': 'none'}
         ),
 
     ])
@@ -107,9 +116,10 @@ app.layout = serve_layout()
     Output('hidden-data', 'children'),
     [Input('puzzle-selector', 'value'),
      Input('heatmap', 'clickData'),
-     Input('button', 'n_clicks')],
+     Input('button', 'n_clicks'),
+     Input('button-clear', 'n_clicks')],
     [State('hidden-data', 'children')])
-def update_data(dropdown_value, clickData, n_clicks, game_json):
+def update_data(dropdown_value, clickData, n_clicks, n_clicks_clear, game_json):
 
     game_dict = json.loads(game_json)
     
@@ -130,11 +140,37 @@ def update_data(dropdown_value, clickData, n_clicks, game_json):
         game_dict['grid'] = game._grid.tolist()
         game_dict['puzzle'] = dropdown_value
         game_dict['n_clicks'] = 0
+        game_dict['n_clicks_clear'] = 0
 
-
+    # Trigger 2: Solve button clicked
     elif (n_clicks is not None) and (n_clicks > game_dict['n_clicks']):
-            print("Solve problem")
-            game_dict['n_clicks'] = n_clicks
+        print("Solve problem")
+
+        game = GridMap(
+            sp.nono_dict[dropdown_value]['col_rules'], 
+            sp.nono_dict[dropdown_value]['row_rules']
+        )
+        game._grid = np.array(game_dict['grid'])
+        
+        # Solve problem
+        game = opt.rule_based_simplify(game)
+        model = opt.opt_model(game)
+
+        pyutilib.subprocess.GlobalData.DEFINE_SIGNAL_HANDLERS_DEFAULT = False
+
+        game._grid = opt.solve_model(model, game._h, game._w)
+
+        game_dict['grid'] = game._grid.tolist()
+
+        game_dict['n_clicks'] = n_clicks
+
+    # Clear button clicked
+    if (n_clicks_clear is not None) and \
+        (n_clicks_clear > game_dict['n_clicks_clear']):
+
+        game_dict['grid'] = np.zeros((game_dict['h'], game_dict['w'])).tolist()
+        game_dict['n_clicks_clear'] = n_clicks_clear
+
 
     # Trigger 3: if user clicked on the grid
     elif clickData is not None:
@@ -147,7 +183,9 @@ def update_data(dropdown_value, clickData, n_clicks, game_json):
         grid[y, x] = game_dict['changes'][str(z)]
         game_dict['grid'] = grid.tolist()
 
+    # print('before return', game_dict['grid'])
     return json.dumps(game_dict)
+
 
 @app.callback(
     Output('heatmap', 'figure'),

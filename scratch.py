@@ -1,26 +1,24 @@
-    
 import dash
-import dash_html_components as html
 import dash_core_components as dcc
+import dash_html_components as html
+from dash.dependencies import Output, Input
 
 app = dash.Dash()
-app.layout = html.Div([
-    html.Div([
-        html.Div([
-            html.H3('Column 1'),
-            dcc.Graph(id='g1', figure={'data': [{'y': [1, 2, 3]}]})
-        ], className="six columns"),
 
-        html.Div([
-            html.H3('Column 2'),
-            dcc.Graph(id='g2', figure={'data': [{'y': [1, 2, 3]}]})
-        ], className="six columns"),
-    ], className="row")
+
+app.layout = html.Div([
+    html.Button(id='button', children='Button'),
+    html.Br(),
+    dcc.Dropdown(id='dropdown',
+                 options=[{'value': True, 'label': 'True'},
+                          {'value': False, 'label': 'False'}])
 ])
 
-app.css.append_css({
-    'external_url': 'https://codepen.io/chriddyp/pen/bWLwgP.css'
-})
+@app.callback(Output('button', 'disabled'),
+             [Input('dropdown', 'value')])
+def set_button_enabled_state(on_off):
+    return on_off
+
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server()

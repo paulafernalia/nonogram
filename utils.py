@@ -26,7 +26,7 @@ class GridMap:
         self._grid = np.zeros([self._h, self._w])
 
         self._row_labels = [" ".join([str(r)+" " for r in rule]) for rule in row_rules]
-        self._col_labels = ["\n".join([str(r) for r in rule]) for rule in col_rules]
+        self._col_labels = ["\n".join([str(r) for r in rule[::-1]]) for rule in col_rules]
         
     @property
     def grid(self):

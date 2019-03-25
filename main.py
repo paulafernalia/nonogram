@@ -1,19 +1,20 @@
 import numpy as np
 
 from utils import GridMap
-import sample_puzzle
+import sample_puzzle as sp
 from opt import opt_model, solve_model, rule_based_simplify
 
 # Create game instance
+
+col_rules = sp.nono_dict['Nonogram 1: 10x10']['col_rules']
+row_rules = sp.nono_dict['Nonogram 1: 10x10']['row_rules']
+
 game = GridMap(col_rules, row_rules)
 
 game, empty_cells = rule_based_simplify(game)
 
 # Create optimisation model
-model = opt_model(game, empty_cells)
-
-# Plot solution
-fig, ax = game.plot_grid()
+model = opt_model(game)
 
 # Solve problem
 model, results, optimality = solve_model(model, tee=True)

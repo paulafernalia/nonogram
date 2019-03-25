@@ -3,9 +3,11 @@ import pyomo.environ as pyo
 import numpy as np
 import itertools
 from utils import initialise_dict_ranges, islandinfo
+import pyutilib.subprocess.GlobalData
 
 
-def opt_model(GridMap, empty_cells):
+
+def opt_model(GridMap):
 	''' 
 	Function to create the pyomo concrete model with all 
 	its parameters, variables, constraints and dummy objective
@@ -172,7 +174,7 @@ def opt_model(GridMap, empty_cells):
 		for c in m.C:
 			if GridMap._grid[r,c] == 1:
 				m.partial_sol.add(m.x[r,c] == 1)
-			if GridMap._grid[r,c] == -1:
+			if GridMap._grid[r,c] == 0.5:
 				m.partial_sol.add(m.x[r,c] == 0)
 
 
@@ -196,9 +198,11 @@ def opt_model(GridMap, empty_cells):
 
 def solve_model(
 	model, 
+	h,
+	w,
 	solver='cbc', 
 	gap=None, 
-	run_time=None, 
+	run_time=120, 
 	tee=True):
 
 	''' Solve optimisation problem defined in model
@@ -214,18 +218,26 @@ def solve_model(
 	-	optimality: boolean, true if solution is optimal
 	'''
 	print("*  Solving model")
-	solver = pyo.SolverFactory('cbc')
 
-	if gap is not None:
-		solver.options['allowableGap'] = gap
+	pyutilib.subprocess.GlobalData.DEFINE_SIGNAL_HANDLERS_DEFAULT = False
 
-	if run_time is not None:
-		solver.options['seconds'] = run_time
-
+	solver = pyo.SolverFactory(solver)
+	solver.options['seconds'] = run_time
 	results = solver.solve(model, tee=tee)
 	optimality = results.solver.termination_condition == pyo.TerminationCondition.optimal
 
-	return model, results, optimality
+	if optimality:
+		print('Termination condition: optimal')
+
+		# Create array with solution
+		grid = np.zeros((h, w))
+		for c in model.C:
+			for r in model.R:
+				grid[r,c] = model.x[r,c].value 
+		return grid
+
+	else:
+		return np.zeros((h,w))
 
 
 def rule_based_simplify(GridMap):
@@ -238,7 +250,6 @@ def rule_based_simplify(GridMap):
 	Returns:
 	- Hard rules for optimizer
 	'''
-	empty_cells = np.zeros_like(GridMap._grid)
 	range_dict = initialise_dict_ranges(GridMap)
 
 	# Generate overlaps in rows
@@ -264,7 +275,7 @@ def rule_based_simplify(GridMap):
 
 
 
-	return GridMap, empty_cells
+	return GridMap
 
 
 
@@ -344,11 +355,11 @@ def blanks_after_before_extreme_groups(GridMap, range_dict, rc):
 
 					if (right - left + 1 == g) and (g_i == 0) and left > 1:
 						print("CASE 1")
-						grid[r_i, 0 : left - 1] = -1
+						grid[r_i, 0 : left - 1] = 0.5
 
 					if (right - left + 1 == g) and (g_i == len(rule) - 1) and right < dim - 2:
 						print("CASE 2")
-						grid[r_i, right + 2 : -1] = -1
+						grid[r_i, right + 2 : -1] = 0.5
 
 	if rc == "C":
 		grid = grid.T
@@ -374,7 +385,7 @@ def update_range(GridMap, range_dict, rc):
 		for g_i, g in enumerate(rule):
 			start = range_dict[rc][r_i]['S'][g_i]
 			end = range_dict[rc][r_i]['E'][g_i]
-			empty_idx = np.where(grid[r_i,:] == -1)[0]
+			empty_idx = np.where(grid[r_i,:] == 0.5)[0]
 
 
 			empty_idx = empty_idx[(empty_idx >= start) & (empty_idx <= start + g - 1)]
@@ -410,11 +421,11 @@ def blanks_around_longest_possible(GridMap, range_dict, rc):
 		for p_i, p in enumerate(ones_ranges):
 			if np.all(ones_lens[p_i] >= np.array(rule)):
 				if p[0] > 0:
-					if rc == "R": GridMap._grid[r_i, p[0] - 1] = -1
-					elif rc == "C": GridMap._grid[p[0] - 1, r_i] = -1
+					if rc == "R": GridMap._grid[r_i, p[0] - 1] = 0.5
+					elif rc == "C": GridMap._grid[p[0] - 1, r_i] = 0.5
 				if p[1] < dim - 1: 
-					if rc == "R": GridMap._grid[r_i, p[1] + 1] = -1
-					elif rc == "C": GridMap._grid[p[1] + 1, r_i] = -1
+					if rc == "R": GridMap._grid[r_i, p[1] + 1] = 0.5
+					elif rc == "C": GridMap._grid[p[1] + 1, r_i] = 0.5
 
 	return GridMap._grid
 
@@ -444,11 +455,11 @@ def blanks_around_finished(GridMap, range_dict, rc):
 
 			if (right - left + 1 == g):
 				if left > 0: 
-					if rc == "R": GridMap._grid[r_i, left - 1] = -1
-					elif rc == "C": GridMap._grid[left - 1, r_i] = -1
+					if rc == "R": GridMap._grid[r_i, left - 1] = 0.5
+					elif rc == "C": GridMap._grid[left - 1, r_i] = 0.5
 				if right < dim - 1: 
-					if rc == "R": GridMap._grid[r_i, right + 1] = -1
-					elif rc == "C": GridMap._grid[right + 1, r_i] = -1
+					if rc == "R": GridMap._grid[r_i, right + 1] = 0.5
+					elif rc == "C": GridMap._grid[right + 1, r_i] = 0.5
 
 	return GridMap._grid
 
