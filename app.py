@@ -63,7 +63,7 @@ def serve_layout():
                         'marginTop': '15px', 
                         'color': '#0b1b47', 
                         'background': 'white',
-                        'width': '300px',
+                        'width': '100%',
                         'fontSize': '15px',
                         'fontFamily': 'sans-serif'}
                 )

@@ -15,8 +15,6 @@ h1, h2, h3, h4, h5, h6 {
 .app-title{
     color:white;
     padding-left: 5px;
-    /*font-size: 25px;    */
-    /*vertical-align: middle;*/
     font-family: sans-serif;
 }
 
@@ -26,7 +24,7 @@ h1, h2, h3, h4, h5, h6 {
   color: white; 
   font-size: 15px; 
   border: 2px solid white;
-  width: 300px;
+  width: 95%;
   border-radius: 4px;
   margin-top: 15px;
 }

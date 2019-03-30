@@ -25,8 +25,8 @@ class GridMap:
         self._num_rules = sum([len(r) for r in row_rules]) + sum([len(c) for c in col_rules])
         self._grid = np.zeros([self._h, self._w])
 
-        self._row_labels = [" ".join([str(r)+" " for r in rule]) for rule in row_rules]
-        self._col_labels = ["\n".join([str(r) for r in rule[::-1]]) for rule in col_rules]
+        self._row_labels = ["".join([str(r)+"  " for r in rule]) for rule in row_rules]
+        self._col_labels = ["".join([str(r)+"  " for r in rule[::-1]]) for rule in col_rules]
         
     @property
     def grid(self):
@@ -78,6 +78,11 @@ def islandinfo(y):
 
 
 def plotly_heatmap(grid, w, h, row_labels, col_labels):
+
+    longest_rrule = max([int(len(r)/3) for r in row_labels])
+    longest_crule = max([int(len(r)/3) for r in col_labels])
+    longest_rule = max(longest_rrule, longest_crule)
+
     data= go.Heatmap(
                 # x=list(range(w)),
                 # y=list(range(0,-h)),
@@ -88,14 +93,19 @@ def plotly_heatmap(grid, w, h, row_labels, col_labels):
                     [1, 'rgb(0, 40, 77)'] # black
                 ],
                 showscale=False,
-                hoverinfo="none",
+                hoverinfo="x+y+z",
                 xgap=2,
                 ygap=2,
             )
     layout = go.Layout(
-                height=30 * (h+4),
-                width=30 * (w+4),
+                height=22 * (h + longest_rule),
+                width=22 *  (w +  longest_rule),
                 plot_bgcolor=('#9cbff4'),
+                margin=dict(
+                    t=20,
+                    r=20,
+                    l=5 * (h + longest_rule), 
+                    b=5 * (h + longest_rule)),
                 yaxis=go.layout.YAxis(
                     ticktext=row_labels,
                     color='rgb(0, 40, 77)',
